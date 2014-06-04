@@ -1,0 +1,137 @@
+#!/bin/bash
+
+# version : 0.1
+# Author  : Samuel Choi 
+
+get_temp()
+{
+	TEMP_CUR_MAX=0;
+
+	for file in /sys/devices/platform/applesmc.768/temp*_input
+	do
+		TEMP_CUR=`cat $file`
+		[ $DEBUG -eq 1 ] && echo "Reading from $file is $TEMP_CUR"
+
+		[ $TEMP_CUR -gt $TEMP_CUR_MAX ] && TEMP_CUR_MAX=$TEMP_CUR
+		[ $DEBUG -eq 1 ] && echo "Current max. is $TEMP_CUR_MAX"
+	done
+}
+
+set_fan_speed()
+{
+	[ $DEBUG -eq 1 ] && echo "Set fan speed to $FAN_SPEED"
+
+	FAN_SPEED_ADJUSTED=1
+	echo $FAN_SPEED > /sys/devices/platform/applesmc.768/fan1_min
+    	echo $FAN_SPEED > /sys/devices/platform/applesmc.768/fan2_min
+}
+
+set_left_fan_speed()
+{
+	[ $DEBUG -eq 1 ] && echo "Set left fan speed to $FAN_SPEED"
+
+	FAN_SPEED_ADJUSTED=1
+	echo $FAN_SPEED > /sys/devices/platform/applesmc.768/fan1_min
+}
+
+set_right_fan_speed()
+{
+	[ $DEBUG -eq 1 ] && echo "Set right fan speed to $FAN_SPEED"
+
+	FAN_SPEED_ADJUSTED=1
+    	echo $FAN_SPEED > /sys/devices/platform/applesmc.768/fan2_min
+}
+
+reset_fan_speed()
+{
+	FAN_SPEED=2000
+
+	[ $DEBUG -eq 1 ] && echo "Reset fan speed"
+
+	FAN_SPEED_ADJUSTED=0
+	echo 2160 > /sys/devices/platform/applesmc.768/fan1_min
+    	echo 2000 > /sys/devices/platform/applesmc.768/fan2_min
+}
+
+exec_fan_control()
+{
+	while [ true ]
+	do
+
+		[ $DEBUG -eq 1 ] && echo "Debug mode"
+		get_temp
+
+		[ $DEBUG -eq 1 ] && echo "Current max. temperature : $TEMP_CUR_MAX"
+
+		if [ $TEMP_CUR_MAX -gt 79000 ]
+		then
+			FAN_SPEED=6000
+			set_fan_speed
+		else
+			if [ $TEMP_CUR_MAX -gt 69000 ]
+			then
+				FAN_SPEED=5000
+				set_fan_speed
+			else
+				if [ $TEMP_CUR_MAX -gt 59000 ]
+				then
+					FAN_SPEED=4000
+					set_fan_speed
+				else
+					if [ $TEMP_CUR_MAX -gt 49000 ]
+					then
+						FAN_SPEED=3500
+						set_fan_speed
+					else
+						if [ $FAN_SPEED_ADJUSTED -eq 1 ] && [ $TEMP_CUR_MAX -lt 43000 ] 
+						then
+							reset_fan_speed
+						else
+							[ $DEBUG -eq 1 ] && echo "Do nothing..."
+						fi
+					fi
+				fi
+			fi
+		fi
+
+		sleep 10
+	done
+}
+
+DEBUG=0
+FAN_SPEED_ADJUSTED=0
+
+if [ $# -eq 0 ]
+then 
+	exec_fan_control
+else
+	if [ $# -eq 1 ] && [ $1 == "-x" ]
+	then
+		DEBUG=1
+		reset_fan_speed
+		killall mbpFanCtl
+	else
+		if [ $# -eq 2 ] && [ $1 == "-s" ]
+		then
+			DEBUG=1
+			FAN_SPEED=$2
+			set_fan_speed
+
+		elif [ $# -eq 2 ] && [ $1 == "-sl" ]  
+		then
+			DEBUG=1
+			FAN_SPEED=$2
+			set_left_fan_speed
+
+		elif [ $# -eq 2 ] && [ $1 == "-sr" ]  
+		then
+			DEBUG=1
+			FAN_SPEED=$2
+			set_right_fan_speed
+
+		else
+			echo "Invalid parameter"
+		fi
+	fi
+fi
+
