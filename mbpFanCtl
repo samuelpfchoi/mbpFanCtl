@@ -17,6 +17,15 @@ get_temp()
 	done
 }
 
+get_fan_speed()
+{
+	LEFT_FAN_SPEED=`cat /sys/devices/platform/applesmc.768/fan1_min`
+	RIGHT_FAN_SPEED=`cat /sys/devices/platform/applesmc.768/fan2_min`
+
+	echo "Left fan speed is $LEFT_FAN_SPEED"
+	echo "Right fan speed is $RIGHT_FAN_SPEED"
+}
+
 set_fan_speed()
 {
 	[ $DEBUG -eq 1 ] && echo "Set fan speed to $FAN_SPEED"
@@ -83,7 +92,7 @@ exec_fan_control()
 						FAN_SPEED=3500
 						set_fan_speed
 					else
-						if [ $FAN_SPEED_ADJUSTED -eq 1 ] && [ $TEMP_CUR_MAX -lt 43000 ] 
+						if [ $FAN_SPEED_ADJUSTED -eq 1 ] && [ $TEMP_CUR_MAX -lt 46000 ]
 						then
 							reset_fan_speed
 						else
@@ -105,11 +114,21 @@ if [ $# -eq 0 ]
 then 
 	exec_fan_control
 else
-	if [ $# -eq 1 ] && [ $1 == "-x" ]
+	if [ $# -eq 1 ] && [ $1 == "-t" ]
+	then
+		DEBUG=1
+		exec_fan_control
+
+	elif [ $# -eq 1 ] && [ $1 == "-x" ]
 	then
 		DEBUG=1
 		reset_fan_speed
 		killall mbpFanCtl
+
+	elif [ $# -eq 1 ] && [ $1 == "-q" ]
+	then
+		DEBUG=1
+		get_fan_speed
 	else
 		if [ $# -eq 2 ] && [ $1 == "-s" ]
 		then
